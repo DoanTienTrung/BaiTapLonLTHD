@@ -1,0 +1,11 @@
+{% extends 'admin/base_site.html' %}
+
+{% block content %}
+<h1>So bai post: {{ post_count }} </h1>
+<ul>
+    {% for s in stats %}
+    <li><strong>{{ s.post_type }}</strong> co: {{s.comment_count}}</li>
+    {% endfor %}
+</ul>
+
+{% endblock %}
