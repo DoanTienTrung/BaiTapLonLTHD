@@ -1,11 +1,110 @@
-{% extends 'admin/base_site.html' %}
+{% extends "admin/base_site.html" %}
 
 {% block content %}
-<h1>So bai post: {{ post_count }} </h1>
-<ul>
-    {% for s in stats %}
-    <li><strong>{{ s.post_type }}</strong> co: {{s.comment_count}}</li>
-    {% endfor %}
-</ul>
+<h1>Thống kê số lượng người dùng & bài viết</h1>
+
+<!-- Hiển thị dữ liệu dưới dạng bảng -->
+<table border="1" cellpadding="8" cellspacing="0">
+    <thead>
+        <tr>
+            <th>Thời gian</th>
+            <th>Bài viết theo tháng</th>
+            <th>Bài viết theo quý</th>
+            <th>Bài viết theo năm</th>
+            <th>Người dùng theo năm</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for i in posts_by_year %}
+        <tr>
+            <td>{{ i.label }}</td>
+            <td>
+                {% for p in posts_by_month %}
+                    {% if p.label|slice:":4" == i.label %}
+                        {{ p.count }}
+                    {% endif %}
+                {% endfor %}
+            </td>
+            <td>
+                {% for q in posts_by_quarter %}
+                    {% if q.label == i.label %}
+                        {{ q.count }}
+                    {% endif %}
+                {% endfor %}
+            </td>
+            <td>{{ i.count }}</td>
+            <td>
+                {% for u in users_by_year %}
+                    {% if u.label == i.label %}
+                        {{ u.count }}
+                    {% endif %}
+                {% endfor %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Import Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div style="width: 80%; margin: auto;">
+    <h2>Bài viết theo tháng</h2>
+    <canvas id="postsByMonthChart"></canvas>
+
+    <h2>Bài viết theo quý</h2>
+    <canvas id="postsByQuarterChart"></canvas>
+
+    <h2>Bài viết theo năm</h2>
+    <canvas id="postsByYearChart"></canvas>
+
+    <h2>Người dùng theo năm</h2>
+    <canvas id="usersByYearChart"></canvas>
+</div>
+
+<script>
+    function createChart(canvasId, label, data) {
+        if (!data || data.length === 0) {
+            console.warn(`Không có dữ liệu cho ${label}`);
+            return;
+        }
+
+        new Chart(document.getElementById(canvasId), {
+            type: 'bar',
+            data: {
+                labels: data.map(item => item.label),
+                datasets: [{
+                    label: label,
+                    data: data.map(item => item.count),
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        try {
+            const postsByMonth = JSON.parse('{{ posts_by_month|safe }}');
+            const postsByQuarter = JSON.parse('{{ posts_by_quarter|safe }}');
+            const postsByYear = JSON.parse('{{ posts_by_year|safe }}');
+            const usersByYear = JSON.parse('{{ users_by_year|safe }}');
+
+            createChart('postsByMonthChart', "Bài viết theo tháng", postsByMonth);
+            createChart('postsByQuarterChart', "Bài viết theo quý", postsByQuarter);
+            createChart('postsByYearChart', "Bài viết theo năm", postsByYear);
+            createChart('usersByYearChart', "Người dùng theo năm", usersByYear);
+        } catch (error) {
+            console.error("Lỗi khi parse dữ liệu JSON:", error);
+        }
+    });
+</script>
 
 {% endblock %}

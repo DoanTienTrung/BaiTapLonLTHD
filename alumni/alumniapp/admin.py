@@ -6,6 +6,9 @@ from django.utils.html import mark_safe
 from .models import User, Post, Comment, Reaction, Survey, SurveyQuestion, SurveyOption, SurveyResponse, Group
 from ckeditor_uploader.widgets import CKEditorUploadingWidget
 from django.urls import path
+from django.db.models.functions import TruncMonth, TruncYear, TruncQuarter
+from django.http import JsonResponse
+import json
 
 
 class UserAdmin(admin.ModelAdmin):
@@ -110,12 +113,47 @@ class PostAdminSite(admin.AdminSite):
         ] + super().get_urls()
 
     def post_stats(self, request):
-        post_count = Post.objects.count()
-        stats = Post.objects.annotate(comment_count=Count('comments')).values("id", "post_type", "comment_count")
+        def format_data(queryset, key):
+            return [{'label': item[key].strftime('%Y-%m' if key == 'month' else '%Y'), 'count': item['count']} for item in queryset]
 
+        posts_by_month = format_data(
+            Post.objects.annotate(month=TruncMonth('created_at'))
+            .values('month')
+            .annotate(count=Count('id'))
+            .order_by('month'),
+            'month'
+        )
+
+        posts_by_quarter = format_data(
+            Post.objects.annotate(quarter=TruncQuarter('created_at'))
+            .values('quarter')
+            .annotate(count=Count('id'))
+            .order_by('quarter'),
+            'quarter'
+        )
+
+        posts_by_year = format_data(
+            Post.objects.annotate(year=TruncYear('created_at'))
+            .values('year')
+            .annotate(count=Count('id'))
+            .order_by('year'),
+            'year'
+        )
+
+        users_by_year = format_data(
+            User.objects.annotate(year=TruncYear('date_joined'))
+            .values('year')
+            .annotate(count=Count('id'))
+            .order_by('year'),
+            'year'
+        )
+
+        # Chuyển thành JSON string
         return TemplateResponse(request, 'admin/post-stats.html', {
-            'post_count': post_count,
-            'stats': stats
+            'posts_by_month': json.dumps(posts_by_month),
+            'posts_by_quarter': json.dumps(posts_by_quarter),
+            'posts_by_year': json.dumps(posts_by_year),
+            'users_by_year': json.dumps(users_by_year),
         })
 
 admin_site = PostAdminSite('myalumniapp')
